@@ -1,0 +1,64 @@
+a.
+
+SELECT cat.name FROM prod 
+LEFT JOIN cat ON prod.cat_id = cat.id
+WHERE prod.id IN (9, 14, 6, 7, 2)
+GROUP BY cat.NAME
+
+b.
+
+(SELECT prod.id FROM cat
+LEFT JOIN prod ON cat.id = prod.cat_id 
+WHERE cat.id = 2)
+UNION
+(SELECT prod.id FROM cat
+LEFT JOIN cat AS c ON cat.id = c.parent_id AND c.id IN (3, 4, 5)
+LEFT JOIN prod ON c.id = prod.cat_id
+WHERE cat.id = 2)
+
+или
+
+SELECT prod.id FROM cat
+LEFT JOIN cat AS c ON cat.id = c.parent_id AND c.id IN (3,4,5)
+LEFT JOIN prod ON c.id = prod.cat_id OR cat.id = prod.cat_id
+WHERE cat.id = 2
+GROUP BY  prod.id
+
+c.
+
+SELECT cat.id, cat.NAME, COUNT(prod.id) AS prod_count FROM cat
+LEFT JOIN prod ON prod.cat_id = cat.id
+WHERE cat.id IN (1,2, 3)
+GROUP BY cat.id
+
+d.
+
+SELECT count(DISTINCT(prod.id)) AS total_uni_prod FROM cat
+LEFT JOIN prod ON prod.cat_id = cat.id
+WHERE cat.id IN (1,2, 3)
+
+e.
+	
+CREATE DEFINER=`root`@`%` PROCEDURE `bk`(
+    IN `cat_id_param` INT
+)
+LANGUAGE SQL
+NOT DETERMINISTIC
+CONTAINS SQL
+SQL SECURITY DEFINER
+COMMENT 'get breadcrumb'
+BEGIN	
+    DECLARE variable1 INT;
+    DECLARE variable2 varchar(50);
+    SET variable1 = cat_id_param;
+   
+    DROP TABLE IF EXISTS `temp`;
+    CREATE TEMPORARY TABLE `temp` (`cat_id` INT NULL, `cat_name` CHAR(50) NULL) COLLATE='utf8_general_ci';
+	 
+    WHILE variable1 <> 0 DO 
+	SELECT cat.parent_id, cat.cat_name INTO variable1, variable2 FROM cat WHERE cat.id = variable1;
+	INSERT INTO temp (cat_id, cat_name) VALUES (variable1, variable2);
+    END WHILE; 
+   
+   SELECT * From `temp`;
+END
